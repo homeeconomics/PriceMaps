@@ -98,6 +98,34 @@ jobs:
         publish_dir: ./output
         keep_files: true
 
+    - name: Deploy to Server
+      if: steps.check.outputs.new_data == 'true'
+      env:
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        SERVER_PASS: ${{ secrets.SERVER_PASS }}
+        SERVER_PATH: /home2/yxwrmjmy/public_html/wp-content/uploads/reports/live/PriceMaps
+      run: |
+        # Install lftp for FTP upload
+        sudo apt-get update && sudo apt-get install -y lftp
+
+        # Create PriceMaps directory if it doesn't exist and upload files
+        lftp -e "
+          set ftp:ssl-allow no;
+          open ftp://$SERVER_HOST;
+          user $SERVER_USER $SERVER_PASS;
+          mkdir -p $SERVER_PATH;
+          cd $SERVER_PATH;
+          put output/us_price_levels_with_search.html;
+          put output/us_yoy_price_map_with_search.html;
+          bye
+        "
+
+        echo "✅ Maps deployed to server at $SERVER_PATH"
+        echo "URLs:"
+        echo "  - https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_price_levels_with_search.html"
+        echo "  - https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_yoy_price_map_with_search.html"
+
     - name: Send notification
       if: steps.check.outputs.new_data == 'true'
       run: |
